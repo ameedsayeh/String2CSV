@@ -70,6 +70,7 @@ def main():
     input_file_encoding = parsed_args.input_encoding
     output_file_encoding = parsed_args.output_encoding
     remove_duplicates = parsed_args.remove_duplicates
+    silent = parsed_args.silent
 
     if parsed_args.output is None:
         output_file_path = generate_output_file_name()
@@ -88,8 +89,9 @@ def main():
     output_data = convert_to_csv_format(sorted_data, csv_delimiter)
     write_data_on_file(output_data, output_file_path, output_file_encoding)
 
-    ending_length = len(results)
-    print_end_message(output_file_path, ending_length, starting_length - ending_length)
+    if not silent:
+        ending_length = len(results)
+        print_end_message(output_file_path, ending_length, starting_length - ending_length)
 
 
 if __name__ == "__main__":
@@ -103,5 +105,6 @@ if __name__ == "__main__":
     parser.add_argument("--input-encoding", type=str, required=False, action="store", help="Source .string file encoding", default="utf-8")
     parser.add_argument("--output-encoding", type=str, required=False, action="store", help="Output .csv file encoding", default="utf-8")
     parser.add_argument("--remove-duplicates", required=False, action="store_true", help="Remove Duplicate Keys")
+    parser.add_argument("--silent", required=False, action="store_true", help="No printing")
 
     main()
