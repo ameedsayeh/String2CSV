@@ -1,79 +1,87 @@
 import sys
 import os
-import datetime
+from datetime import datetime
 import re
 import argparse
 
-usage_instructions = \
-    """
-    String2CSV Usage:
+def generate_output_file_name():
+    return os.path.join(os.getcwd(), "output_{}.csv".format(datetime.now().strftime("%Y%m%d%H%M%S")))
 
-    [python3] String2CSV.py (String File Path) [Output CSV Path] [CSV Delimiter] [Sort Alphabetically]
-    or
-    [python3] String2CSV.py (String File Path) --output [Output CSV Path] --del [CSV Delimiter] --sort [Sort Mode Alphabetically]
-    """
-help_instructions = \
-    """
-    {}
+def get_regex():
+    return r'"(.*)"\s=\s"(.*)";\n'
 
-    Mandatory fields:
-    =   String File Path: eg. /Users/ameedsayeh/Desktop/Localizable.string
+def find_all_matching(input_file_path, input_file_encoding, regex):
+    input_file = open(input_file_path, "r", encoding=input_file_encoding)
+    input_data = input_file.read()
+    input_file.close()
+    return list(re.findall(regex, input_data))
 
-    Optional fields:
-    =   Output CSV File Path: Path to save the output csv file.
-        Can be specified using --output
-        Default Value: <Current Path>/output_csv_<timestamp>.csv
 
-    =   Delimiter: Generated CSV file delimiter.
-        Can be specified using --del
-        Default Value: Semi-Colon ";".
+def sort_data(data, sort_mode = 0):
 
-    =   Sort Mode: Sort Generated file alphabitacally with these modes:
-        - 0: (Default) No sort.
-        - 1: Sort Keys alphabitacally in ascending order.
-        - 2: Sort Keys alphabitacally in descending order.
-        - 3: Sort Values alphabitacally in ascending order.
-        - 4: Sort Values alphabitacally in descending order.
+    if sort_mode not in range(1,5):
+        return data
 
-    Salam.
-    """.format(usage_instructions)
+    if sort_mode == 1:
+        key_index = 0
+        reverse = False
+    elif sort_mode == 2:
+        key_index = 0
+        reverse = True
+    elif sort_mode == 3:
+        key_index = 1
+        reverse = False
+    elif sort_mode == 4:
+        key_index = 1
+        reverse = True
+        
+    return sorted(data, key=lambda group: group[key_index],reverse=reverse)
+
+def convert_to_csv_format(data, delimiter):
+    buffer = ""
+    for group in data:
+        if len(group) == 2:
+            buffer += "{}{}{}\n".format(group[0], delimiter, group[1])
+    return buffer
+
+def write_data_on_file(output_data, output_file_path, output_file_encoding):
+    output_file = open(output_file_path, "w", encoding=output_file_encoding)
+    output_file.write(output_data)
+    output_file.close()
+
+
+def main():
+
+    ### Start - Parsing Args ###
+    parsed_args = parser.parse_args()
+
+    input_file_path = parsed_args.input
+    csv_delimiter = parsed_args.delimiter
+    sort_mode = parsed_args.sort
+    input_file_encoding = parsed_args.input_encoding
+    output_file_encoding = parsed_args.output_encoding
+
+    if parsed_args.output is None:
+        output_file_path = generate_output_file_name()
+    else:
+        output_file_path = parsed_args.output
+    ### End - Parsing Args ###
+
+    results = find_all_matching(input_file_path, input_file_encoding, get_regex())
+    sorted_data = sort_data(results, sort_mode)
+    output_data = convert_to_csv_format(sorted_data, csv_delimiter)
+    write_data_on_file(output_data, output_file_path, output_file_encoding)
+
 
 if __name__ == "__main__":
 
-    string_file_path = sys.argv[1] if len(sys.argv) >= 2 else None
-    output_file_path = sys.argv[2] if len(sys.argv) >= 3 else None
-    csv_file_delimiter = sys.argv[3] if len(sys.argv) >= 4 else None
+    parser = argparse.ArgumentParser(description="String2CSV Convertor")
 
-    if string_file_path == None:
-        print(usage_instructions)
-        exit(-1)
+    parser.add_argument("--input", type=str, required=True, action="store", help="Source .string file path")
+    parser.add_argument("--output", type=str, required=False, action="store", help="Output .csv file path")
+    parser.add_argument("--delimiter", type=str, required=False, action="store", help="csv delimiter", default=";")
+    parser.add_argument("--sort", type=int, required=False, action="store", help="Sort Mode", default=0)
+    parser.add_argument("--input-encoding", type=str, required=False, action="store", help="Source .string file encoding", default="utf-8")
+    parser.add_argument("--output-encoding", type=str, required=False, action="store", help="Output .csv file encoding", default="utf-8")
 
-    if string_file_path in ["help", "HELP", "-help", "--help"]:
-        print(help_instructions)
-        exit(0)
-
-    if not os.path.exists(string_file_path) or not os.path.isfile(string_file_path):
-        print("Cannot find file at path: {}".format(string_file_path))
-        exit(-1)
-
-    if output_file_path == None:
-        generated_output_file_name = "output_csv_{}.csv".format(datetime.datetime.now().strftime("%d_%m_%Y_%H_%M_%S"))
-        output_file_path = "{}/{}".format(os.getcwd(), generated_output_file_name)
-    
-    if csv_file_delimiter == None:
-        csv_file_delimiter = ";"
-    
-    input_file = open(string_file_path, "r")
-    input_data = input_file.read()
-
-    results = re.findall(r'"(.*)"\s=\s"(.*)";\n', input_data)
-
-    if results != None and len(results) > 0:
-        output_file = open(output_file_path, "w")
-        for res in results:
-            if len(res) == 2:
-                output_file.write("{}{}{}\n".format(res[0], csv_file_delimiter, res[1]))
-        output_file.close()
-
-    print("Done!")
-    input_file.close()
+    main()
